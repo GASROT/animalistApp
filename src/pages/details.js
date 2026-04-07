@@ -22,30 +22,66 @@ import {
   ReviewAuthor,
   ReviewRating,
   ReviewText,
+  DetailsInfoRow,
+  DetailsInfoLabel,
+  DetailsInfoValue,
+  DetailsInfoValueHighlight,
+  GenreBadge,
+  GenreBadgeText,
+  StudioBadge,
+  StudioBadgeText,
+  DetailsContainer,
 } from "../styles.js";
 
 export default function Details({ route }) {
   const { anime } = route.params;
   const [reviews, setReviews] = useState([]);
   const [characters, setCharacters] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [studios, setStudios] = useState([]);
+  const [animeDetails, setAnimeDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [isInWatchLater, setIsInWatchLater] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
       const storedUser = await AsyncStorage.getItem("user");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        checkIfInWatchLater(userData);
       }
     }
     loadUser();
     fetchDetails();
   }, []);
 
+  const checkIfInWatchLater = async (userData) => {
+    const watchLaterKey = `watchLater_${userData.usuario}`;
+    const storedList = await AsyncStorage.getItem(watchLaterKey);
+    const watchLaterList = storedList ? JSON.parse(storedList) : [];
+    const isAlreadyAdded = watchLaterList.some((a) => a.id === anime.id);
+    setIsInWatchLater(isAlreadyAdded);
+  };
+
   const fetchDetails = async () => {
-    const query = `
+    const query = ` 
       query ($id: Int) {
         Media(id: $id) {
+          format
+          genres
+          source
+          season
+          seasonYear
+          startDate {
+            year
+            month
+            day
+          }
+          duration
+          status
+          averageScore
           reviews(sort: RATING_DESC, limit: 5) {
             nodes {
               id
@@ -65,6 +101,26 @@ export default function Details({ route }) {
               }
             }
           }
+          staff(sort: [ROLE, ID_DESC], page: 1, perPage: 10) {
+            nodes {
+              id
+              name {
+                full
+              }
+              image {
+                medium
+              }
+            }
+            edges {
+              role
+            }
+          }
+          studios(isMain: true) {
+            nodes {
+              id
+              name
+            }
+          }
         }
       }
     `;
@@ -74,6 +130,9 @@ export default function Details({ route }) {
       const media = response.data.data.Media || {};
       setReviews(media.reviews?.nodes || []);
       setCharacters(media.characters?.nodes || []);
+      setStaff(media.staff?.nodes || []);
+      setStudios(media.studios?.nodes || []);
+      setAnimeDetails(media);
     } catch (error) {
       console.log("Erro ao buscar dados", error);
     } finally {
@@ -98,6 +157,7 @@ export default function Details({ route }) {
 
     watchLaterList.push(anime);
     await AsyncStorage.setItem(watchLaterKey, JSON.stringify(watchLaterList));
+    setIsInWatchLater(true);
     Alert.alert("Sucesso", "Adicionado ao Assistir Mais Tarde! 🕒");
   };
 
@@ -109,9 +169,11 @@ export default function Details({ route }) {
           <AnimeTitleExpanded>{anime.name}</AnimeTitleExpanded>
           <AnimeInfoExpanded>{anime.bio}</AnimeInfoExpanded>
           
-          <WatchLaterButton onPress={handleWatchLater}>
-            <WatchLaterText>🕒 Assistir Mais Tarde</WatchLaterText>
-          </WatchLaterButton>
+          {!isInWatchLater && (
+            <WatchLaterButton onPress={handleWatchLater}>
+              <WatchLaterText>🕒 Assistir Mais Tarde</WatchLaterText>
+            </WatchLaterButton>
+          )}
         </Header>
         
         <SectionContainer>
@@ -124,13 +186,105 @@ export default function Details({ route }) {
         </SectionContainer>
 
         <SectionContainer>
+          <SectionTitle style={{ marginBottom: 12 }}>Detalhes do Anime</SectionTitle>
+          <DetailsContainer>
+            {animeDetails?.format && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Formato:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.format === "TV" ? "Série TV" : animeDetails.format === "MOVIE" ? "Filme" : animeDetails.format}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.episodes && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Episódios:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.episodes}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.duration && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Duração por Episódio:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.duration} min
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.averageScore && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Nota Média:</DetailsInfoLabel>
+                <DetailsInfoValueHighlight>
+                  ⭐ {animeDetails.averageScore / 10}/10
+                </DetailsInfoValueHighlight>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.status && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Status:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.status === "FINISHED" ? "Finalizado" : animeDetails.status === "RELEASING" ? "Em Transmissão" : animeDetails.status === "NOT_YET_RELEASED" ? "A Lançar" : animeDetails.status}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.source && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Fonte:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.source === "MANGA" ? "Mangá" : animeDetails.source === "LIGHT_NOVEL" ? "Light Novel" : animeDetails.source === "VISUAL_NOVEL" ? "Visual Novel" : animeDetails.source === "VIDEO_GAME" ? "Videogame" : animeDetails.source === "ORIGINAL" ? "Original" : animeDetails.source}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.startDate && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Data de Estreia:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.startDate.day || "?"}/{animeDetails.startDate.month || "?"}/{animeDetails.startDate.year || "?"}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+
+            {animeDetails?.season && (
+              <DetailsInfoRow>
+                <DetailsInfoLabel>Temporada:</DetailsInfoLabel>
+                <DetailsInfoValue>
+                  {animeDetails.season === "WINTER" ? "Inverno" : animeDetails.season === "SPRING" ? "Primavera" : animeDetails.season === "SUMMER" ? "Verão" : animeDetails.season === "FALL" ? "Outono" : animeDetails.season} {animeDetails.seasonYear}
+                </DetailsInfoValue>
+              </DetailsInfoRow>
+            )}
+          </DetailsContainer>
+        </SectionContainer>
+
+        {animeDetails?.genres && animeDetails.genres.length > 0 && (
+          <SectionContainer>
+            <SectionTitle style={{ marginBottom: 12 }}>Gêneros</SectionTitle>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {animeDetails.genres.map((genre, index) => (
+                <GenreBadge key={`genre-${genre}-${index}`}>
+                  <GenreBadgeText>
+                    {genre}
+                  </GenreBadgeText>
+                </GenreBadge>
+              ))}
+            </View>
+          </SectionContainer>
+        )}
+
+        <SectionContainer>
           <SectionTitle>Personagens</SectionTitle>
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : characters.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {characters.map((char) => (
-                <CharacterCard key={char.id}>
+              {characters.map((char, index) => (
+                <CharacterCard key={`char-${char.id}-${index}`}>
                   <CharacterImage
                     source={{ uri: char.image?.medium || 'https://via.placeholder.com/80x120' }}
                   />
@@ -146,12 +300,53 @@ export default function Details({ route }) {
         </SectionContainer>
 
         <SectionContainer>
+          <SectionTitle>Staff</SectionTitle>
+          {loading ? (
+            <ActivityIndicator color="#3DB4F2" size="large" />
+          ) : staff.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {staff.map((staffMember, index) => (
+                <CharacterCard key={`staff-${staffMember.id}-${index}`}>
+                  <CharacterImage
+                    source={{ uri: staffMember.image?.medium || 'https://via.placeholder.com/80x120' }}
+                  />
+                  <CharacterName>
+                    {staffMember.name?.full}
+                  </CharacterName>
+                </CharacterCard>
+              ))}
+            </ScrollView>
+          ) : (
+            <EmptyText>Nenhum membro da staff encontrado.</EmptyText>
+          )}
+        </SectionContainer>
+
+        <SectionContainer>
+          <SectionTitle>Estúdios</SectionTitle>
+          {loading ? (
+            <ActivityIndicator color="#3DB4F2" size="large" />
+          ) : studios.length > 0 ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {studios.map((studio, index) => (
+                <StudioBadge key={`studio-${studio.id}-${index}`}>
+                  <StudioBadgeText>
+                    {studio.name}
+                  </StudioBadgeText>
+                </StudioBadge>
+              ))}
+            </View>
+          ) : (
+            <EmptyText>Nenhum estúdio encontrado.</EmptyText>
+          )}
+        </SectionContainer>
+
+        <SectionContainer>
           <SectionTitle>Reviews da Comunidade</SectionTitle>
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : reviews.length > 0 ? (
-            reviews.map((review) => (
-              <ReviewCard key={review.id}>
+            reviews.map((review, index) => (
+              <ReviewCard key={`review-${review.id}-${index}`}>
                 <ReviewHeader>
                   <ReviewAuthor>
                     {review.user?.name || "Anônimo"}
