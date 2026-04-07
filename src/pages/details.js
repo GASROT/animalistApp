@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, ScrollView, Alert, ActivityIndicator, FlatList } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
 import {
@@ -55,17 +55,17 @@ export default function Details({ route }) {
     }
     loadUser();
     fetchDetails();
-  }, []);
+  }, [anime.id]);
 
-  const checkIfInWatchLater = async (userData) => {
+  const checkIfInWatchLater = useCallback(async (userData) => {
     const watchLaterKey = `watchLater_${userData.usuario}`;
     const storedList = await AsyncStorage.getItem(watchLaterKey);
     const watchLaterList = storedList ? JSON.parse(storedList) : [];
     const isAlreadyAdded = watchLaterList.some((a) => a.id === anime.id);
     setIsInWatchLater(isAlreadyAdded);
-  };
+  }, [anime.id]);
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     const query = ` 
       query ($id: Int) {
         Media(id: $id) {
@@ -138,7 +138,7 @@ export default function Details({ route }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [anime.id]);
 
   const handleWatchLater = async () => {
     if (!user) {
@@ -163,7 +163,13 @@ export default function Details({ route }) {
 
   return (
     <Container>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 30 }}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+      >
         <Header>
           <CoverExpanded source={{ uri: anime.avatar }} />
           <AnimeTitleExpanded>{anime.name}</AnimeTitleExpanded>
@@ -192,7 +198,13 @@ export default function Details({ route }) {
               <DetailsInfoRow>
                 <DetailsInfoLabel>Formato:</DetailsInfoLabel>
                 <DetailsInfoValue>
-                  {animeDetails.format === "TV" ? "Série TV" : animeDetails.format === "MOVIE" ? "Filme" : animeDetails.format}
+                  {
+                    animeDetails.format === "TV"
+                      ? "Série TV"
+                      : animeDetails.format === "MOVIE"
+                      ? "Filme"
+                      : animeDetails.format
+                  }
                 </DetailsInfoValue>
               </DetailsInfoRow>
             )}
@@ -228,7 +240,15 @@ export default function Details({ route }) {
               <DetailsInfoRow>
                 <DetailsInfoLabel>Status:</DetailsInfoLabel>
                 <DetailsInfoValue>
-                  {animeDetails.status === "FINISHED" ? "Finalizado" : animeDetails.status === "RELEASING" ? "Em Transmissão" : animeDetails.status === "NOT_YET_RELEASED" ? "A Lançar" : animeDetails.status}
+                  {
+                    animeDetails.status === "FINISHED"
+                      ? "Finalizado"
+                      : animeDetails.status === "RELEASING"
+                      ? "Em Transmissão"
+                      : animeDetails.status === "NOT_YET_RELEASED"
+                      ? "A Lançar"
+                      : animeDetails.status
+                  }
                 </DetailsInfoValue>
               </DetailsInfoRow>
             )}
@@ -237,7 +257,19 @@ export default function Details({ route }) {
               <DetailsInfoRow>
                 <DetailsInfoLabel>Fonte:</DetailsInfoLabel>
                 <DetailsInfoValue>
-                  {animeDetails.source === "MANGA" ? "Mangá" : animeDetails.source === "LIGHT_NOVEL" ? "Light Novel" : animeDetails.source === "VISUAL_NOVEL" ? "Visual Novel" : animeDetails.source === "VIDEO_GAME" ? "Videogame" : animeDetails.source === "ORIGINAL" ? "Original" : animeDetails.source}
+                  {
+                    animeDetails.source === "MANGA"
+                      ? "Mangá"
+                      : animeDetails.source === "LIGHT_NOVEL"
+                      ? "Light Novel"
+                      : animeDetails.source === "VISUAL_NOVEL"
+                      ? "Visual Novel"
+                      : animeDetails.source === "VIDEO_GAME"
+                      ? "Videogame"
+                      : animeDetails.source === "ORIGINAL"
+                      ? "Original"
+                      : animeDetails.source
+                  }
                 </DetailsInfoValue>
               </DetailsInfoRow>
             )}
@@ -255,7 +287,18 @@ export default function Details({ route }) {
               <DetailsInfoRow>
                 <DetailsInfoLabel>Temporada:</DetailsInfoLabel>
                 <DetailsInfoValue>
-                  {animeDetails.season === "WINTER" ? "Inverno" : animeDetails.season === "SPRING" ? "Primavera" : animeDetails.season === "SUMMER" ? "Verão" : animeDetails.season === "FALL" ? "Outono" : animeDetails.season} {animeDetails.seasonYear}
+                  {
+                    animeDetails.season === "WINTER"
+                      ? "Inverno"
+                      : animeDetails.season === "SPRING"
+                      ? "Primavera"
+                      : animeDetails.season === "SUMMER"
+                      ? "Verão"
+                      : animeDetails.season === "FALL"
+                      ? "Outono"
+                      : animeDetails.season
+                  }{" "}
+                  {animeDetails.seasonYear}
                 </DetailsInfoValue>
               </DetailsInfoRow>
             )}
@@ -265,13 +308,13 @@ export default function Details({ route }) {
         {animeDetails?.genres && animeDetails.genres.length > 0 && (
           <SectionContainer>
             <SectionTitle style={{ marginBottom: 12 }}>Gêneros</SectionTitle>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <View style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+            }}>
               {animeDetails.genres.map((genre, index) => (
-                <GenreBadge key={`genre-${genre}-${index}`}>
-                  <GenreBadgeText>
-                    {genre}
-                  </GenreBadgeText>
-                </GenreBadge>
+                <GenreItem_ genre={genre} index={index} key={`genre-${genre}`} />
               ))}
             </View>
           </SectionContainer>
@@ -282,18 +325,18 @@ export default function Details({ route }) {
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : characters.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {characters.map((char, index) => (
-                <CharacterCard key={`char-${char.id}-${index}`}>
-                  <CharacterImage
-                    source={{ uri: char.image?.medium || 'https://via.placeholder.com/80x120' }}
-                  />
-                  <CharacterName>
-                    {char.name?.full}
-                  </CharacterName>
-                </CharacterCard>
-              ))}
-            </ScrollView>
+            <FlatList
+              data={characters}
+              renderItem={({ item, index }) => (
+                <CharacterCard_ char={item} index={index} key={`char-${item.id}`} />
+              )}
+              keyExtractor={(item, index) => `char-${item.id}`}
+              horizontal
+              scrollEnabled={true}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              showsHorizontalScrollIndicator={false}
+            />
           ) : (
             <EmptyText>Nenhum personagem encontrado.</EmptyText>
           )}
@@ -304,18 +347,18 @@ export default function Details({ route }) {
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : staff.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {staff.map((staffMember, index) => (
-                <CharacterCard key={`staff-${staffMember.id}-${index}`}>
-                  <CharacterImage
-                    source={{ uri: staffMember.image?.medium || 'https://via.placeholder.com/80x120' }}
-                  />
-                  <CharacterName>
-                    {staffMember.name?.full}
-                  </CharacterName>
-                </CharacterCard>
-              ))}
-            </ScrollView>
+            <FlatList
+              data={staff}
+              renderItem={({ item, index }) => (
+                <StaffCard_ staffMember={item} index={index} key={`staff-${item.id}`} />
+              )}
+              keyExtractor={(item, index) => `staff-${item.id}`}
+              horizontal
+              scrollEnabled={true}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              showsHorizontalScrollIndicator={false}
+            />
           ) : (
             <EmptyText>Nenhum membro da staff encontrado.</EmptyText>
           )}
@@ -326,13 +369,13 @@ export default function Details({ route }) {
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : studios.length > 0 ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            <View style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 10,
+            }}>
               {studios.map((studio, index) => (
-                <StudioBadge key={`studio-${studio.id}-${index}`}>
-                  <StudioBadgeText>
-                    {studio.name}
-                  </StudioBadgeText>
-                </StudioBadge>
+                <StudioItem_ studio={studio} index={index} key={`studio-${studio.id}`} />
               ))}
             </View>
           ) : (
@@ -345,26 +388,71 @@ export default function Details({ route }) {
           {loading ? (
             <ActivityIndicator color="#3DB4F2" size="large" />
           ) : reviews.length > 0 ? (
-            reviews.map((review, index) => (
-              <ReviewCard key={`review-${review.id}-${index}`}>
-                <ReviewHeader>
-                  <ReviewAuthor>
-                    {review.user?.name || "Anônimo"}
-                  </ReviewAuthor>
-                  <ReviewRating>
-                    ⭐ {review.rating}/100
-                  </ReviewRating>
-                </ReviewHeader>
-                <ReviewText>
-                  {review.summary}
-                </ReviewText>
-              </ReviewCard>
-            ))
+            <FlatList
+              data={reviews}
+              renderItem={({ item, index }) => (
+                <ReviewItem_ review={item} index={index} key={`review-${item.id}`} />
+              )}
+              keyExtractor={(item, index) => `review-${item.id}`}
+              scrollEnabled={false}
+              removeClippedSubviews={true}
+            />
           ) : (
-            <EmptyText>Nenhuma review encontrada para este anime.</EmptyText>
+            <EmptyText>
+              Nenhuma review encontrada para este anime.
+            </EmptyText>
           )}
         </SectionContainer>
       </ScrollView>
     </Container>
   );
 }
+
+// Componentes memoizados para otimizar renderização
+const CharacterCard_ = React.memo(({ char, index }) => (
+  <CharacterCard key={`char-${char.id}-${index}`}>
+    <CharacterImage
+      source={{
+        uri: char.image?.medium || 'https://via.placeholder.com/80x120',
+      }}
+    />
+    <CharacterName>{char.name?.full}</CharacterName>
+  </CharacterCard>
+));
+
+const StaffCard_ = React.memo(({ staffMember, index }) => (
+  <CharacterCard key={`staff-${staffMember.id}-${index}`}>
+    <CharacterImage
+      source={{
+        uri: staffMember.image?.medium || 'https://via.placeholder.com/80x120',
+      }}
+    />
+    <CharacterName>{staffMember.name?.full}</CharacterName>
+  </CharacterCard>
+));
+
+const GenreItem_ = React.memo(({ genre, index }) => (
+  <GenreBadge key={`genre-${genre}-${index}`}>
+    <GenreBadgeText>{genre}</GenreBadgeText>
+  </GenreBadge>
+));
+
+const StudioItem_ = React.memo(({ studio, index }) => (
+  <StudioBadge key={`studio-${studio.id}-${index}`}>
+    <StudioBadgeText>{studio.name}</StudioBadgeText>
+  </StudioBadge>
+));
+
+const ReviewItem_ = React.memo(({ review, index }) => (
+  <ReviewCard key={`review-${review.id}-${index}`}>
+    <ReviewHeader>
+      <ReviewAuthor>
+        {review.user?.name || "Anônimo"}
+      </ReviewAuthor>
+      <ReviewRating>
+        ⭐ {review.rating}/100
+      </ReviewRating>
+    </ReviewHeader>
+    <ReviewText>{review.summary}</ReviewText>
+  </ReviewCard>
+));
