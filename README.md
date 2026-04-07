@@ -1,11 +1,6 @@
-# PROJETO REACT-NATIVE - 1º BIMESTRE
+# Animalist - Aplicativo de Gerenciamento de Animes
 
-**Membros da Dupla:**
-1. Guilherme de araujo Silva
-2. André Coral Rodrigues
-
-## Sobre o Projeto
-**Animalist**   
+## Sobre o Projeto   
 Este projeto foi desenvolvido em React Native (Expo) como parte da avaliação do 1º Bimestre da disciplina focado em desenvolvimento mobile. O aplicativo permite o cadastro e login de usuários, além de consumir a **AniList API** (GraphQL) para buscar, listar e detalhar informações sobre Animes (Cards).
 
 ## Estrutura do Projeto
@@ -63,6 +58,160 @@ Os dados dos usuários, suas respectivas contas e suas listas exclusivas de anim
 3. **`@react-native-async-storage/async-storage`:** Banco de dados local (chave-valor) essencial, onde os dados de login e as listas de animes operam.
 4. **`styled-components`:** Biblioteca robusta utilizada para customizações visuais (Dark Mode), centralizando os visuais de alta reutilização na aplicação.
 5. **`expo`:** Framework que abstrai e facilita o ciclo de build, permitindo testes rápidos tanto no app *Expo Go* ou via emulador.
+
+## Queries GraphQL Utilizadas
+
+O projeto utiliza 3 queries GraphQL distintas da **API AniList**, cada uma otimizada para renderizar diferentes tipos de conteúdo:
+
+### 1. Query de Carousel Banner (home.js)
+**Arquivo:** `src/pages/home.js`
+
+```graphql
+query {
+  banners: Page(page: 1, perPage: 5) {
+    media(type: ANIME, sort: TRENDING_DESC) {
+      id
+      title { romaji english }
+      bannerImage
+    }
+  }
+  popular: Page(page: 1, perPage: 10) {
+    media(type: ANIME, sort: TRENDING_DESC) { ... }
+  }
+  upcoming: Page(page: 1, perPage: 10) {
+    media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC) { ... }
+  }
+  allTime: Page(page: 1, perPage: 10) {
+    media(type: ANIME, sort: POPULARITY_DESC) { ... }
+  }
+  top100: Page(page: 1, perPage: 10) {
+    media(type: ANIME, sort: SCORE_DESC) { ... }
+  }
+}
+```
+
+**Por quê usar:**
+- **Múltiplas categorias em uma única chamada:** Reduz requisições HTTP, otimizando performance
+- **Ordenações distintas (TRENDING_DESC, SCORE_DESC, POPULARITY_DESC):** Cada categoria renderiza animes baseado em diferentes critérios relevantes
+- **Status de lançamento:** `NOT_YET_RELEASED` filtra apenas animes futuros para a seção "Em Breve"
+- **Imagem de Banner:** Campo `bannerImage` fornece dimensões adequadas para o carousel visual da home
+
+---
+
+### 2. Query de Detalhes Expandidos (details.js)
+**Arquivo:** `src/pages/details.js`
+
+```graphql
+query ($id: Int) {
+  Media(id: $id) {
+    format
+    genres
+    source
+    season
+    seasonYear
+    startDate { year month day }
+    duration
+    status
+    averageScore
+    reviews(sort: RATING_DESC, limit: 5) {
+      nodes {
+        id
+        summary
+        rating
+        user { name }
+      }
+    }
+    characters(sort: [ROLE, ID_DESC], page: 1, perPage: 10) {
+      nodes {
+        id
+        name { full }
+        image { medium }
+      }
+    }
+    staff(sort: [ROLE, ID_DESC], page: 1, perPage: 10) {
+      nodes {
+        id
+        name { full }
+        image { medium }
+      }
+      edges { role }
+    }
+    studios(isMain: true) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}
+```
+
+**Por quê usar:**
+- **Parâmetro variável ($id):** Permite buscar detalhes específicos de um único anime sem refetch de dados redundantes
+- **Dados expandidos:** Inclui personagens, staff, reviews e studios para renderizar uma tela rica com várias seções
+- **Ordenações e paginação:** `characters` e `staff` ordenados por `ROLE` mostram personagens/equipe por importância
+- **Informações de data:** `startDate`, `season`, `seasonYear` contextualizam quando o anime foi/será lançado
+- **Review rating:** Permite exibir avaliações da comunidade ordenadas pela relevância (RATING_DESC)
+
+---
+
+### 3. Query de Busca Dinâmica (favorites.js)
+**Arquivo:** `src/pages/favorites.js`
+
+```graphql
+query ($search: String) {
+  Media(search: $search, type: ANIME) {
+    id
+    title {
+      romaji
+      english
+    }
+    description
+    coverImage {
+      large
+    }
+    status
+    episodes
+    averageScore
+  }
+}
+```
+
+**Por quê usar:**
+- **Parâmetro de busca ($search):** Permite que o usuário busque animes por título em tempo real
+- **Campos essenciais:** Retorna apenas dados necessários para renderizar um card de anime (sem dados bloated)
+- **Cobertura com imagem grande:** `coverImage.large` fornece resolução suficiente para cards visuais sem pesar na requisição
+- **Status e episódios:** Informações cruciais para o usuário decidir se quer adicionar à sua lista
+- **Score médio:** Facilita decisões de visualização baseadas em avaliações da comunidade
+
+---
+
+### Resumo Comparativo
+
+| Query | Propósito | Tipo | Campos | Performance |
+|-------|-----------|------|--------|-------------|
+| **Carousel** | Renderizar 5 categorias de animes na home | Sem parâmetro | Muitos (múltiplas Page calls) | Moderada (1 req com múltiplos resultados) |
+| **Detalhes** | Exibir página expandida de um anime | Com $id | Muitos (personagens, staff, reviews) | Moderada (1 req com dados profundos) |
+| **Busca** | Encontrar animes por título dinâmico | Com $search | Poucos (essenciais) | Rápida (requisição leve e focada) |
+
+Cada query é estrategicamente estruturada para minimizar dados desnecessários enquanto maximiza a experiência do usuário na tela específica.
+
+---
+
+## Documentação e Referência
+
+Para explorar outras queries GraphQL disponíveis na **AniList API** e entender melhor a estrutura de dados que pode ser utilizada em futuras expansões do projeto, consulte a documentação oficial:
+
+📖 **[AniList GraphQL Query Reference](https://docs.anilist.co/reference/query)**
+    **[AniList GraphQL Reference](https://docs.anilist.co/guide/graphql/)**
+A documentação contém:
+- **Todos os campos disponíveis** para Media, User, Character, Staff, Studio e muito mais
+- **Filtros avançados** para refinar buscas por gênero, status, formato, etc.
+- **Ordenações** para diferentes critérios de relevância
+- **Exemplos práticos** de queries complexas
+- **Rate limiting** e best practices para otimização de requisições
+
+Você pode adaptar as queries existentes ou criar novas conforme necessário para implementar funcionalidades adicionais no aplicativo.
 
 
 
