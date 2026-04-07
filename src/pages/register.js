@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
 import { AuthCard, registerStyles as styles } from "../styles";
+import { formatarTelefone, formatarCPF } from "../utils/formatters";
 
 export default function Register() {
   const [nome, setNome] = useState("");
@@ -52,8 +54,8 @@ export default function Register() {
       alert("Por favor, insira um endereço de e-mail válido.");
       return;
     }
-    if (curso.trim().length < 2) {
-      alert("Insira um nome válido para o curso.");
+    if (curso.trim().length === 0) {
+      alert("Selecione um curso válido.");
       return;
     }
 
@@ -93,7 +95,7 @@ export default function Register() {
       <AuthCard>
       <TextInput
         style={styles.input}
-        placeholder="Nome Completo (Mínimo 3 caracteres)"
+        placeholder="Nome Completo"
         placeholderTextColor="#000000"
         value={nome}
         onChangeText={setNome}
@@ -120,21 +122,21 @@ export default function Register() {
       />
       <TextInput
         style={styles.input}
-        placeholder="Telefone (DDD + 9 Dígitos)"
+        placeholder="Telefone (XX) XXXXX-XXXX"
         placeholderTextColor="#000000"
         value={telefone}
-        onChangeText={setTelefone}
+        onChangeText={(valor) => setTelefone(formatarTelefone(valor))}
         keyboardType="phone-pad"
         maxLength={15}
       />
       <TextInput
         style={styles.input}
-        placeholder="000.000.000-00 (CPF)"
+        placeholder="XXX.XXX.XXX-XX (CPF)"
         placeholderTextColor="#000000"
         value={cpf}
-        onChangeText={setCpf}
+        onChangeText={(valor) => setCpf(formatarCPF(valor))}
         keyboardType="numeric"
-        maxLength={11}
+        maxLength={14}
       />
       <TextInput
         style={styles.input}
@@ -146,15 +148,20 @@ export default function Register() {
         autoCapitalize="none"
         maxLength={60}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Curso"
-        placeholderTextColor="#000000"
-        value={curso}
-        onChangeText={setCurso}
-        autoCapitalize="words"
-        maxLength={50}
-      />
+      <View style={styles.pickerContainer}>
+        <Picker
+          style={styles.picker}
+          selectedValue={curso}
+          onValueChange={(itemValue) => setCurso(itemValue)}
+        >
+          <Picker.Item label="Selecione um curso..." value="" />
+          <Picker.Item label="Análise e Desenvolvimento de Sistemas" value="Análise e Desenvolvimento de Sistemas" />
+          <Picker.Item label="Desenvolvimento de Software Multiplataforma" value="Desenvolvimento de Software Multiplataforma" />
+          <Picker.Item label="Gestão da Produção Industrial" value="Gestão da Produção Industrial" />
+          <Picker.Item label="Gestão de Recursos Humanos" value="Gestão de Recursos Humanos" />
+          <Picker.Item label="Gestão Empresarial (a distância)" value="Gestão Empresarial (a distância)" />
+        </Picker>
+      </View>
       <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
