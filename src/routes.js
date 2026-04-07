@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Modal } from "react-native";
-import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import { NavigationContainer, useNavigation, useFocusEffect } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "@expo/vector-icons/MaterialIcons";
@@ -21,29 +21,49 @@ function HeaderUser() {
   const [user, setUser] = useState({});
   const navigation = useNavigation();
 
-  useEffect(() => {
-    async function loadUser() {
-      const storedUser = await AsyncStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+  useFocusEffect(
+    useCallback(() => {
+      async function loadUser() {
+        try {
+          const storedUser = await AsyncStorage.getItem("user");
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+        } catch (error) {
+          console.log("Erro ao carregar usuário", error);
+        }
       }
-    }
-    loadUser();
-  }, []);
+      loadUser();
+    }, [])
+  );
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setModalVisible(false);
     navigation.reset({
       index: 0,
       routes: [{ name: "Login" }],
     });
-  };
+  }, [navigation]);
+
+  const handleOpenModal = useCallback(() => {
+    setModalVisible(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setModalVisible(false);
+  }, []);
+
+  const handleGoToProfile = useCallback(() => {
+    setModalVisible(false);
+    navigation.navigate("Profile");
+  }, [navigation]);
 
   return (
     <View>
       <TouchableOpacity
-        onPress={() => setModalVisible(true)}
+        onPress={handleOpenModal}
         style={{ marginRight: 15 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Icon name="account-circle" size={28} color="#fff" />
       </TouchableOpacity>
@@ -52,20 +72,18 @@ function HeaderUser() {
         animationType="fade"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={handleCloseModal}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setModalVisible(false)}
+          onPress={handleCloseModal}
         >
           <View style={styles.menuContainer}>
             <TouchableOpacity 
               style={styles.userInfo} 
-              onPress={() => {
-                setModalVisible(false);
-                navigation.navigate("Profile");
-              }}
+              activeOpacity={0.7}
+              onPress={handleGoToProfile}
             >
               <Icon name="person" size={24} color="#7F8C8D" />
               <View style={{ marginLeft: 10 }}>
