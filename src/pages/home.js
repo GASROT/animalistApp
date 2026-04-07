@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import  { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity,  ScrollView, Alert, Dimensions, Image } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -71,26 +71,27 @@ const Home = () => {
   
   const navigation = useNavigation();
 
-  useFocusEffect(
-    React.useCallback(() => {
-      async function loadUserData() {
-        const storedUser = await AsyncStorage.getItem("user");
-        if (storedUser) {
-          const currentUser = JSON.parse(storedUser);
-          setUser(currentUser);
-          
-          const animesKey = `animes_${currentUser.usuario}`;
-          const storedAnimes = await AsyncStorage.getItem(animesKey);
-          if (storedAnimes) {
-            const animesList = JSON.parse(storedAnimes);
-            setFavoritedIds(animesList.map((a) => a.id));
-          } else {
-            setFavoritedIds([]);
-          }
-        }
+  const loadUserData = useCallback(async () => {
+    const storedUser = await AsyncStorage.getItem("user");
+    if (storedUser) {
+      const currentUser = JSON.parse(storedUser);
+      setUser(currentUser);
+      
+      const animesKey = `animes_${currentUser.usuario}`;
+      const storedAnimes = await AsyncStorage.getItem(animesKey);
+      if (storedAnimes) {
+        const animesList = JSON.parse(storedAnimes);
+        setFavoritedIds(animesList.map((a) => a.id));
+      } else {
+        setFavoritedIds([]);
       }
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
       loadUserData();
-    }, [])
+    }, [loadUserData])
   );
 
   useEffect(() => {
@@ -114,7 +115,7 @@ const Home = () => {
     return () => clearInterval(bannerInterval);
   }, [recentBanners]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     const mediaFields = `
       id
       title { romaji english }
@@ -161,9 +162,9 @@ const Home = () => {
     } catch (error) {
       console.log("Erro ao buscar dados", error);
     }
-  };
+  }, []);
 
-  const formatAnime = (media) => ({
+  const formatAnime = useCallback((media) => ({
     id: media.id,
     name: media.title.romaji || media.title.english || "Título Desconhecido",
     status: media.status,
@@ -173,9 +174,9 @@ const Home = () => {
     episodes: media.episodes,
     averageScore: media.averageScore,
     genres: media.genres || [],
-  });
+  }), []);
 
-  const formatBannerAnime = (bannerMedia) => ({
+  const formatBannerAnime = useCallback((bannerMedia) => ({
     id: bannerMedia.id,
     name: bannerMedia.title.romaji || bannerMedia.title.english || "Título Desconhecido",
     avatar: bannerMedia.bannerImage,
@@ -186,9 +187,9 @@ const Home = () => {
     episodes: 0,
     averageScore: 0,
     genres: [],
-  });
+  }), []);
 
-  const handleAddFavorite = async (item) => {
+  const handleAddFavorite = useCallback(async (item) => {
     if (!user) {
       Alert.alert("Erro", "Nenhum usuário logado!");
       return;
@@ -207,15 +208,15 @@ const Home = () => {
     await AsyncStorage.setItem(animesKey, JSON.stringify(animesList));
     setFavoritedIds([...favoritedIds, animeFormatado.id]);
     Alert.alert("Sucesso", "Anime salvo nos seus favoritos! ");
-  };
+  }, [user, favoritedIds, formatAnime]);
 
-  const handleDetails = (item) => {
+  const handleDetails = useCallback((item) => {
     // Se tem bannerImage, é um banner, senão é um anime normal
     const animeFormatado = item.bannerImage ? formatBannerAnime(item) : formatAnime(item);
     navigation.navigate("Details", { anime: animeFormatado });
-  };
+  }, [navigation, formatAnime, formatBannerAnime]);
 
-  const renderItem = ({ item }) => (
+  const renderItem = useCallback(({ item }) => (
     <AnimeCard style={styles.horizontalCard}>
       <TouchableOpacity activeOpacity={0.8} onPress={() => handleDetails(item)}>
         <CoverImage source={{ uri: item.coverImage.large }} style={styles.horizontalImage} />
@@ -243,13 +244,16 @@ const Home = () => {
         </TouchableOpacity>
       )}
     </AnimeCard>
-  );
+  ), [handleDetails, handleAddFavorite, favoritedIds]);
 
   return (
     <ScrollView 
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      updateCellsBatchingPeriod={50}
     >
       {recentBanners.length > 0 && (
         <BannerCarouselContainer>
