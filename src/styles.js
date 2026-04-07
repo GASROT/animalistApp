@@ -376,6 +376,20 @@ export const registerStyles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.5,
   },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#11161D",
+    borderRadius: 8,
+    marginVertical: 6,
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  picker: {
+    width: "100%",
+    color: "#000000",
+    fontSize: 15,
+  },
 });
 
 // ---- HOME PAGE ----
