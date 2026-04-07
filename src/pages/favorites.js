@@ -38,7 +38,16 @@ export default function Favorites() {
       const animesKey = `animes_${currentUser.usuario}`;
       const storedAnimes = await AsyncStorage.getItem(animesKey);
       if (storedAnimes) {
-        setAnimes(JSON.parse(storedAnimes));
+        const loadedAnimes = JSON.parse(storedAnimes);
+        // Apenas atualizar se os dados mudaram, para evitar re-render desnecessária
+        setAnimes((prevAnimes) => {
+          const prevIds = prevAnimes.map(a => a.id).sort();
+          const newIds = loadedAnimes.map(a => a.id).sort();
+          if (JSON.stringify(prevIds) !== JSON.stringify(newIds)) {
+            return loadedAnimes;
+          }
+          return prevAnimes;
+        });
       }
     }
   };
@@ -131,6 +140,14 @@ export default function Favorites() {
     }
   };
 
+  const handleViewDetails = useCallback((anime) => {
+    navigation.navigate("Details", { anime });
+  }, [navigation]);
+
+  const handleRemoveCallback = useCallback((id) => {
+    handleRemove(id);
+  }, [user, animes]);
+
   return (
     <Container>
       <Form>
@@ -168,24 +185,31 @@ export default function Favorites() {
           data={animes}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <AnimeCard>
-              <CoverImage source={{ uri: item.avatar }} />
-              <AnimeTitle>{item.name}</AnimeTitle>
-              <AnimeInfo>{item.bio}</AnimeInfo>
-              <ProfileButton
-                onPress={() => navigation.navigate("Details", { anime: item })}
-              >
-                <ProfileButtonText>Ver Mais Detalhes</ProfileButtonText>
-              </ProfileButton>
-              <RemoveButton
-                onPress={() => handleRemove(item.id)}
-              >
-                <ProfileButtonText>Remover dos Favoritos</ProfileButtonText>
-              </RemoveButton>
-            </AnimeCard>
+            <AnimeCardMemo 
+              item={item} 
+              onViewDetails={handleViewDetails}
+              onRemove={handleRemoveCallback}
+            />
           )}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={5}
         />
       )}
     </Container>
   );
 }
+
+// Componente memoizado para cada anime card
+const AnimeCardMemo = React.memo(({ item, onViewDetails, onRemove }) => (
+  <AnimeCard>
+    <CoverImage source={{ uri: item.avatar }} />
+    <AnimeTitle>{item.name}</AnimeTitle>
+    <AnimeInfo>{item.bio}</AnimeInfo>
+    <ProfileButton onPress={() => onViewDetails(item)}>
+      <ProfileButtonText>Ver Mais Detalhes</ProfileButtonText>
+    </ProfileButton>
+    <RemoveButton onPress={() => onRemove(item.id)}>
+      <ProfileButtonText>Remover dos Favoritos</ProfileButtonText>
+    </RemoveButton>
+  </AnimeCard>
+));
