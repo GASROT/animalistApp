@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, FlatList, TouchableOpacity,  ScrollView, Alert, Dimensions } from "react-native";
+import { View, Text, FlatList, TouchableOpacity,  ScrollView, Alert, Dimensions, Image } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
-import { AnimeCard, CoverImage, AnimeTitle, homeStyles as styles } from "../styles";
+import { 
+  AnimeCard, 
+  CoverImage, 
+  AnimeTitle, 
+  homeStyles as styles,
+  BannerCarouselContainer,
+  BannerOverlay,
+  BannerTitleText,
+  GenreBadgesContainer,
+  GenreBadgeItem,
+  GenreBadgeItemText,
+  CarouselItemWrapper,
+  bannerCarouselStyles,
+} from "../styles";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.38; // Cards se adaptam a diferentes tamanhos de tela
@@ -30,12 +43,15 @@ const CarouselList = ({ data, onRenderItem }) => {
       snapToInterval={SNAP_INTERVAL}
       decelerationRate="fast"
       contentContainerStyle={{ paddingRight: 20 }}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      updateCellsBatchingPeriod={50}
       renderItem={({ item, index }) => {
         const isFullyVisible = visibleIndices.length === 0 || visibleIndices.includes(index);
         return (
-          <View style={{ opacity: isFullyVisible ? 1 : 0.4 }}>
+          <CarouselItemWrapper visible={isFullyVisible}>
             {onRenderItem({ item })}
-          </View>
+          </CarouselItemWrapper>
         );
       }}
     />
@@ -47,8 +63,11 @@ const Home = () => {
   const [upcoming, setUpcoming] = useState([]);
   const [allTime, setAllTime] = useState([]);
   const [top100, setTop100] = useState([]);
+  const [recentBanners, setRecentBanners] = useState([]);
   const [user, setUser] = useState(null);
   const [favoritedIds, setFavoritedIds] = useState([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const bannerFlatListRef = useRef(null);
   
   const navigation = useNavigation();
 
@@ -78,6 +97,23 @@ const Home = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (recentBanners.length === 0) return;
+
+    const bannerInterval = setInterval(() => {
+      setBannerIndex((prevIndex) => {
+        const nextIndex = (prevIndex + 1) % recentBanners.length;
+        bannerFlatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+        return nextIndex;
+      });
+    }, 5000); // Troca de banner a cada 5 segundos
+
+    return () => clearInterval(bannerInterval);
+  }, [recentBanners]);
+
   const fetchData = async () => {
     const mediaFields = `
       id
@@ -87,10 +123,18 @@ const Home = () => {
       episodes
       averageScore
       description
+      genres
     `;
 
     const query = `
       query {
+        banners: Page(page: 1, perPage: 5) {
+          media(type: ANIME, sort: TRENDING_DESC) {
+            id
+            title { romaji english }
+            bannerImage
+          }
+        }
         popular: Page(page: 1, perPage: 10) {
           media(type: ANIME, sort: TRENDING_DESC) { ${mediaFields} }
         }
@@ -109,6 +153,7 @@ const Home = () => {
     try {
       const response = await api.post("", { query });
       const data = response.data.data;
+      setRecentBanners(data.banners.media);
       setPopular(data.popular.media);
       setUpcoming(data.upcoming.media);
       setAllTime(data.allTime.media);
@@ -127,6 +172,20 @@ const Home = () => {
     description: media.description,
     episodes: media.episodes,
     averageScore: media.averageScore,
+    genres: media.genres || [],
+  });
+
+  const formatBannerAnime = (bannerMedia) => ({
+    id: bannerMedia.id,
+    name: bannerMedia.title.romaji || bannerMedia.title.english || "Título Desconhecido",
+    avatar: bannerMedia.bannerImage,
+    // Campos padrão para evitar erros na página de detalhes
+    status: "UNKNOWN",
+    bio: "Carregando detalhes...",
+    description: "",
+    episodes: 0,
+    averageScore: 0,
+    genres: [],
   });
 
   const handleAddFavorite = async (item) => {
@@ -151,7 +210,8 @@ const Home = () => {
   };
 
   const handleDetails = (item) => {
-    const animeFormatado = formatAnime(item);
+    // Se tem bannerImage, é um banner, senão é um anime normal
+    const animeFormatado = item.bannerImage ? formatBannerAnime(item) : formatAnime(item);
     navigation.navigate("Details", { anime: animeFormatado });
   };
 
@@ -161,6 +221,18 @@ const Home = () => {
         <CoverImage source={{ uri: item.coverImage.large }} style={styles.horizontalImage} />
         <AnimeTitle numberOfLines={2}>{item.title.romaji}</AnimeTitle>
       </TouchableOpacity>
+
+      {item.genres && item.genres.length > 0 && (
+        <GenreBadgesContainer>
+          {item.genres.slice(0, 2).map((genre, index) => (
+            <GenreBadgeItem key={`genre-${genre}-${index}`}>
+              <GenreBadgeItemText>
+                {genre}
+              </GenreBadgeItemText>
+            </GenreBadgeItem>
+          ))}
+        </GenreBadgesContainer>
+      )}
 
       {!favoritedIds.includes(item.id) && (
         <TouchableOpacity 
@@ -179,6 +251,47 @@ const Home = () => {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {recentBanners.length > 0 && (
+        <BannerCarouselContainer>
+          <FlatList
+            ref={bannerFlatListRef}
+            data={recentBanners}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id.toString()}
+            snapToInterval={width}
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            onScroll={(event) => {
+              const contentOffsetX = event.nativeEvent.contentOffset.x;
+              const currentIndex = Math.round(contentOffsetX / width);
+              setBannerIndex(currentIndex);
+            }}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => handleDetails(item)}
+                style={bannerCarouselStyles.bannerImageWrapper}
+              >
+                <Image 
+                  source={{ uri: item.bannerImage || 'https://via.placeholder.com/1280x200' }}
+                  style={bannerCarouselStyles.bannerImageFullSize}
+                />
+                <BannerOverlay>
+                  <BannerTitleText numberOfLines={2}>
+                    {item.title.romaji || item.title.english}
+                  </BannerTitleText>
+                </BannerOverlay>
+              </TouchableOpacity>
+            )}
+          />
+        </BannerCarouselContainer>
+      )}
+
       <View style={styles.topButtonsContainer}>
         <TouchableOpacity style={styles.myAnimesButton} onPress={() => navigation.navigate("Favorites")}>
           <Text style={styles.myAnimesText}> Favoritos</Text>
