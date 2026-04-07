@@ -7,7 +7,7 @@ Este projeto foi desenvolvido em React Native (Expo) como parte da avaliação d
 O projeto segue uma arquitetura baseada em componentes e separação de responsabilidades (pastas organizadas), comum em aplicações React Native. Abaixo a representação da árvore de diretórios principal:
 
 ```text
-├── project-rn/               # Pasta do app em React Native JS
+├── animalistApp/               # Pasta do app em React Native JS
 │   ├── src/                  # Código-fonte principal da aplicação
 │   │   │
 │   │   ├── pages/            # Telas globais da aplicação
