@@ -1,6 +1,6 @@
 import styled from "styled-components/native";
 import { RectButton } from "react-native-gesture-handler";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
 
 
 export const Container = styled.View`
@@ -712,3 +712,128 @@ export const defaultHeaderOptions = {
   },
   headerTintColor: "#9FADBD",
 };
+
+// ---- DETAILS PAGE - ANIME DETAILS SECTION ----
+export const DetailsInfoRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom-width: 1px;
+  border-bottom-color: #2A3F5F;
+`;
+
+export const DetailsInfoLabel = styled.Text`
+  color: #94A3B8;
+  font-size: 14px;
+`;
+
+export const DetailsInfoValue = styled.Text`
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+export const DetailsInfoValueHighlight = styled.Text`
+  color: #3DB4F2;
+  font-size: 14px;
+  font-weight: bold;
+`;
+
+export const GenreBadge = styled.View`
+  background-color: #3DB4F2;
+  padding-horizontal: 12px;
+  padding-vertical: 6px;
+  border-radius: 16px;
+`;
+
+export const GenreBadgeText = styled.Text`
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 500;
+`;
+
+export const StudioBadge = styled.View`
+  background-color: #1E293B;
+  padding-horizontal: 16px;
+  padding-vertical: 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+`;
+
+export const StudioBadgeText = styled.Text`
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+export const DetailsContainer = styled.View`
+  gap: 12px;
+`;
+
+// ---- HOME PAGE - BANNER CAROUSEL ----
+export const BannerCarouselContainer = styled.View`
+  margin-bottom: 20px;
+`;
+
+export const bannerCarouselStyles = StyleSheet.create({
+  bannerImageWrapper: {
+    width: Dimensions.get("window").width,
+    height: 200,
+  },
+  bannerImageFullSize: {
+    width: "100%",
+    height: "100%",
+  },
+});
+
+export const BannerImageWrapper = styled.View`
+  width: 100%;
+  height: 200px;
+`;
+
+export const BannerImageFullSize = styled.Image`
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+`;
+
+export const BannerOverlay = styled.View`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 12px;
+`;
+
+export const BannerTitleText = styled.Text`
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: bold;
+`;
+
+// ---- HOME PAGE - GENRE BADGES ----
+export const GenreBadgesContainer = styled.View`
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-vertical: 8px;
+`;
+
+export const GenreBadgeItem = styled.View`
+  background-color: #3DB4F2;
+  padding-horizontal: 8px;
+  padding-vertical: 4px;
+  border-radius: 12px;
+`;
+
+export const GenreBadgeItemText = styled.Text`
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 500;
+`;
+
+// ---- HOME PAGE - CAROUSEL ITEM WRAPPER ----
+export const CarouselItemWrapper = styled.View`
+  opacity: ${(props) => (props.visible ? 1 : 0.4)};
+`;
